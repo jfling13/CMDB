@@ -13,6 +13,7 @@ def index(request):
 
 
 def dashboard(request):
+    
     total = models.Asset.objects.count()
     upline = models.Asset.objects.filter(status=0).count()
     offline = models.Asset.objects.filter(status=1).count()
