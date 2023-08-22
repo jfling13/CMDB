@@ -1,36 +1,75 @@
-from django.shortcuts import render,get_object_or_404
+from django.shortcuts import render,get_object_or_404,redirect
+from django.http import HttpResponse
+from django.contrib.auth.hashers import make_password, check_password
 from django.shortcuts import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from assets import models
+from captcha.models import CaptchaStore
+from . import models
+from . import forms
+from datetime import datetime
 from assets import asset_handler
 # Create your views here.
 
+
+
+def login(request):
+    if request.session.get('is_login', None):
+        return redirect("/assets/index/")
+    login_form = forms.UserForm(request.POST)
+    if request.method == "POST":
+        if login_form.is_valid():
+            username = login_form.cleaned_data.get("username")
+            password = login_form.cleaned_data.get('password')
+            try:
+                user = models.User.objects.get(username=username)
+            except:
+                message= 'user is not exsist'
+                return render(request, "assets/login.html", locals())
+            
+            is_password_correct = check_password(password, user.password)
+            if is_password_correct:
+                request.session["is_login"] = True
+                request.session["user_id"] = user.id
+                request.session["user_name"] = user.username
+                return redirect("/assets/index/")
+            else:
+                message= "password wrong"
+                return render(request,'assets/login.html',locals())
+    login_form = forms.UserForm()  
+    return render(request,'assets/login.html', locals())
+
+
 def index(request):
-    # return HttpResponse("shouye")
-    assets = models.Asset.objects.all()
+    if not request.session.get('is_login',None):  # 找到is_login就是True，没找到返回None
+        return redirect('/assets/login/') 
+    else:
+        assets = models.Asset.objects.all()
+    timestamp = datetime.now()
     return render(request, 'assets/index.html', locals())
 
 
 def dashboard(request):
-    
-    total = models.Asset.objects.count()
-    upline = models.Asset.objects.filter(status=0).count()
-    offline = models.Asset.objects.filter(status=1).count()
-    unknown = models.Asset.objects.filter(status=2).count()
-    breakdown = models.Asset.objects.filter(status=3).count()
-    backup = models.Asset.objects.filter(status=4).count()
-    up_rate = round(upline/total*100)
-    o_rate = round(offline/total*100)
-    un_rate = round(unknown/total*100)
-    bd_rate = round(breakdown/total*100)
-    bu_rate = round(backup/total*100)
-    server_number = models.Server.objects.count()
-    networkdevice_number = models.NetworkDevice.objects.count()
-    storagedevice_number = models.StorageDevice.objects.count()
-    securitydevice_number = models.SecurityDevice.objects.count()
-    software_number = models.Software.objects.count()
-
+    if not request.session.get('is_login',None):  # 找到is_login就是True，没找到返回None
+        return redirect('/assets/login/')  #redirect时候使用实际url，reverse或者模板中引用url时使用命名式name
+    else:
+        total = models.Asset.objects.count()
+        upline = models.Asset.objects.filter(status=0).count()
+        offline = models.Asset.objects.filter(status=1).count()
+        unknown = models.Asset.objects.filter(status=2).count()
+        breakdown = models.Asset.objects.filter(status=3).count()
+        backup = models.Asset.objects.filter(status=4).count()
+        up_rate = round(upline/total*100)
+        o_rate = round(offline/total*100)
+        un_rate = round(unknown/total*100)
+        bd_rate = round(breakdown/total*100)
+        bu_rate = round(backup/total*100)
+        server_number = models.Server.objects.count()
+        networkdevice_number = models.NetworkDevice.objects.count()
+        storagedevice_number = models.StorageDevice.objects.count()
+        securitydevice_number = models.SecurityDevice.objects.count()
+        software_number = models.Software.objects.count()
+    timestamp = datetime.now()
     return render(request, 'assets/dashboard.html', locals())
 
 
@@ -41,7 +80,12 @@ def detail(request, asset_id):
     :param asset_id:
     :return:
     """
-    asset = get_object_or_404(models.Asset, id=asset_id)
+    if not request.session.get('is_login',None):  # 找到is_login就是True，没找到返回None
+        return redirect('/assets/login/') 
+    else:
+        asset = get_object_or_404(models.Asset, id=asset_id)
+    
+    timestamp = datetime.now()
     return render(request, 'assets/detail.html', locals())
 
 @csrf_exempt
@@ -77,3 +121,12 @@ def report(request):
         else:
             return HttpResponse("没有资产sn序列号，请检查数据！")
     return HttpResponse('200 ok')
+
+
+def logout(request):
+    if not request.session.get('is_login', None):
+        return redirect('/assets/login/')
+
+    request.session.flush()
+    # del request.session['is_login']
+    return redirect('/assets/login/')
