@@ -1,9 +1,22 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
 # Create your models here.
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    avatar_file = models.ImageField(upload_to='media/', blank=True, null=True)
 
-
+@receiver(pre_save, sender=UserProfile)
+def set_default_avatar_file(sender, instance, **kwargs):
+    if instance.avatar_file:
+        # 如果 avatar_file 字段不为空，不做任何处理
+        return
+    
+    # 如果 avatar_file 字段为空，设置默认值
+    default_avatar_file = 'media/avatar.jpg'  # 默认图片的路径
+    instance.avatar_file = default_avatar_file
+        
 class Asset(models.Model):
     """    所有资产的共有数据表    """
 

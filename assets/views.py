@@ -1,6 +1,6 @@
 from django.shortcuts import render,get_object_or_404,redirect
-from django.http import HttpResponse
-from django.contrib.auth.hashers import make_password, check_password
+from django.http import HttpResponse,JsonResponse
+from django.contrib.auth.hashers import check_password
 from django.shortcuts import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -9,9 +9,29 @@ from . import models
 from . import forms
 from datetime import datetime
 from assets import asset_handler
+import os
+from django.conf import settings
 # Create your views here.
 
 
+def upload_avatar(request):
+    if request.method == 'POST' and request.FILES.get('avatar'):
+        avatar_file = request.FILES['avatar']
+        file_extension = os.path.splitext(avatar_file.name)[1]
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        file_name = timestamp + file_extension
+        relative_file_path = os.path.join(settings.MEDIA_URL, file_name)#生成可访问的公开链接
+        file_path = os.path.join(settings.MEDIA_ROOT, file_name)#生成实际的物理存储地址
+        with open(file_path, "wb") as f:
+            for chunk in avatar_file.chunks():
+                f.write(chunk)
+        user_id = request.session.get('user_id')
+        user_profile = models.UserProfile.objects.get(id=user_id)
+        user_profile.avatar_file = relative_file_path
+        user_profile.save()
+        return JsonResponse({'success': True, 'new_avatar_url': relative_file_path})
+    else:
+        return JsonResponse({'success': False, 'errors': 'Invalid request'})
 
 def login(request):
     if request.session.get('is_login', None):
@@ -46,6 +66,8 @@ def index(request):
     else:
         assets = models.Asset.objects.all()
     timestamp = datetime.now()
+    user_id = request.session.get('user_id')
+    user_profile = models.UserProfile.objects.get(id=user_id)
     return render(request, 'assets/index.html', locals())
 
 

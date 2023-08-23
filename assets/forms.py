@@ -5,5 +5,7 @@ class UserForm(forms.Form):
     password = forms.CharField(label="密码",max_length=128,widget=forms.PasswordInput(attrs={"class":'form-control','placeholder':'请填写密码'}))
     captcha = CaptchaField(label="验证码", widget= CaptchaTextInput(attrs={"class":"form-control","placeholder":"captcha"}))
 
-
+class UploadFileForm(forms.Form):
+    title = forms.CharField(max_length=50)
+    file = forms.FileField()    
 
