@@ -15,9 +15,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
+from django.conf.urls.static import static
+from django.conf import settings
 
 urlpatterns = [
     path('captcha/', include('captcha.urls')),
     path('admin/', admin.site.urls),
     path('assets/', include('assets.urls',namespace="assets")),
-]
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)#在根目录增加media资源，仅在开发环境中
